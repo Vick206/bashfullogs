@@ -1,0 +1,50 @@
+BashfulLogs License v0.0.1 (Absolutely Not a Real Lawyer License)
+
+By using, copying, modifying, or otherwise touching this code (the “Stuff”),
+you agree to the following terms, whether you read them or not:
+
+1. Free Non-Commercial Use
+   You may use the Stuff for personal, educational, homelab, or “I broke production
+   and need a scapegoat” purposes at no cost. If your boss is not paying you
+   money to use this, you are fine.
+
+2. Commercial Use Is Dumb and Bad
+   If you use the Stuff commercially, that means someone is making money from it.
+   If someone is making money from it, that someone must be me.
+   You owe me one hundred percent of the profit generated, gross not net.
+   I don't want the money, please do not sell this trash. 
+
+3. **No Warranty**
+   The Stuff comes with:
+   - No warranty
+   - No support
+   - No promise of security
+   - No guarantee that it won’t wipe your logs, your dignity, or your RAID array
+
+   If something breaks, that is a “you problem.” If it works, that was obviously
+   intentional and you owe me admiration.
+
+4. **Redistribution**
+   You may redistribute modified or unmodified copies of the Stuff as long as:
+   - You keep this license attached
+   - You do not claim you wrote it
+   - You don’t blame me when someone else gets mad at you
+   - You claim you wrote it when it breaks
+
+5. **No Liability**
+   Under no circumstances am I responsible for:
+   - Lost data
+   - Lost jobs
+   - BAZARR log processing catching your condo on fire
+   - Lost relationships
+   - floods, firmware corruption, or emotional damage
+
+6. **Commercial Usage Detection**
+   If you use this commercially and try to hide it, I reserve the right to
+   publicly mock you and pretend I invented Kubernetes.
+
+By continuing past this file, you accept this license and admit that
+commercializing a half-baked homelab project is a terrible business plan.
+
+Signed,  
+Not a developer. 
