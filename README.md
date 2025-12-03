@@ -14,7 +14,7 @@ Runs on Debian based Linux systems. Tested on **Ubuntu**, **Raspberry Pi OS**, a
 
 2. **Auditor** receives those logs, feeds them into a **local LLM**, and produces a readable summary report (email for now)
 
-It’s basically a homelab SIEM that refuses to take itself seriously.
+It’s basically a homelab SIEM that still works better than Arctic Wolf despite working 30% of the time.
 
 ---
 
@@ -33,4 +33,4 @@ Working features:
 - Removing hardcoded credentials in favor of arguments, environment variables, or config files
 - Breaking collector scripts into functions to reduce code duplication
 
-Expect breakage if you look at this sideways.
+Expect breakage, It doesn't even work on my machine yet.
