@@ -24,7 +24,7 @@ EMAIL_TO = [os.environ.get("GMAIL_TO", EMAIL_FROM)]        # default: send to se
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_USER = os.environ.get("GMAIL_SMTP_USER", EMAIL_FROM)  # usually same as FROM
-SMTP_PASS = os.environ.get("GMAIL_APP_PASSWORD", "tizbbkapjibefuhd")  # 16-char app password
+SMTP_PASS = os.environ.get("GMAIL_APP_PASSWORD", "lol no :D")  # 16-char app password
 
 os.makedirs(SUMMARY_DIR, exist_ok=True)
 

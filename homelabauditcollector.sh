@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2025.12.04
+# VERSION: 2024.12.04
 # homelab_audit_collect.sh
 # Collector script for Debian-based hosts
 # - Gathers health/config info
@@ -29,7 +29,7 @@ SCRIPT_PATH="$(readlink -f "$0")"
 
 # URL of the canonical collector script (raw GitHub URL)
 # Override with COLLECTOR_URL env var if you like.
-COLLECTOR_URL="${COLLECTOR_URL:-https://raw.githubusercontent.com/Vick206/bashfullogs/refs/heads/main/homelabauditcollector.sh}"
+COLLECTOR_URL="${COLLECTOR_URL:-https://raw.githubusercontent.com/youruser/yourrepo/main/homelabauditcollector.sh}"
 
 # IP or hostname of the central auditor box that receives reports
 AUDITOR_HOST="10.0.0.242"
@@ -195,7 +195,7 @@ collect_storage_health() {
   else
     echo "ZFS not detected"
   fi
-
+}
 
   # btrfs filesystem usage for root, if the tooling exists
   if command -v btrfs >/dev/null 2>&1; then
@@ -333,7 +333,6 @@ collect_logs() {
     echo "journalctl not present"
   fi
 }
-
 # Check GitHub for a newer collector version and self update if needed.
 # Comparison is based on line 2 of this script and the remote script.
 self_update_if_needed() {
@@ -507,9 +506,6 @@ add_cronjob() {
 }
 
 # ===== MAIN =====
-
-# Self update check (best effort, will reexec if a newer version exists)
-self_update_if_needed "$@"
 
 # Flag to control whether we auto-add a cron job for this script
 NO_CRON=0
