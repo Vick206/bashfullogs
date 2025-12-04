@@ -29,7 +29,7 @@ SCRIPT_PATH="$(readlink -f "$0")"
 
 # URL of the canonical collector script (raw GitHub URL)
 # Override with COLLECTOR_URL env var if you like.
-COLLECTOR_URL="${COLLECTOR_URL:-https://raw.githubusercontent.com/youruser/yourrepo/main/homelabauditcollector.sh}"
+COLLECTOR_URL="${COLLECTOR_URL:-https://raw.githubusercontent.com/Vick206/bashfullogs/refs/heads/main/homelabauditcollector.sh}"
 
 # IP or hostname of the central auditor box that receives reports
 AUDITOR_HOST="10.0.0.242"
