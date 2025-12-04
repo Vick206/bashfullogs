@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# VERSION: 2025.12.04
 # homelab_audit_collect.sh
 # Collector script for Debian-based hosts
 # - Gathers health/config info
@@ -23,8 +24,16 @@ fi
 
 # ===== CONFIG =====
 
+# Path to this script, for self integrity checks and self update
+SCRIPT_PATH="$(readlink -f "$0")"
+
+# URL of the canonical collector script (raw GitHub URL)
+# Override with COLLECTOR_URL env var if you like.
+COLLECTOR_URL="${COLLECTOR_URL:-https://raw.githubusercontent.com/Vick206/bashfullogs/refs/heads/main/homelabauditcollector.sh}"
+
 # IP or hostname of the central auditor box that receives reports
 AUDITOR_HOST="10.0.0.242"
+
 
 # Remote user on the auditor that owns the report directory
 AUDITOR_USER="auditupload"
@@ -42,9 +51,6 @@ HOSTNAME="$(hostname)"
 
 # Current date in YYYY-MM-DD format, also baked into the report file name
 DATE_STR="$(date +%F)"
-
-# Path to this script, for self integrity checks
-SCRIPT_PATH="$(readlink -f "$0")"
 
 # State directory for persistent data (hash, package snapshot, cron stamp, etc.)
 STATE_DIR="/var/lib/homelab-audit"
@@ -144,6 +150,33 @@ collect_basic_health() {
   # ps aux sorted by memory usage, top 5 (plus header)
   ps aux --sort=-%mem | head -n 6
 }
+# Return 0 if this system appears to be a virtual machine, 1 otherwise
+is_virtualized() {
+  # Prefer systemd-detect-virt if available
+  if command -v systemd-detect-virt >/dev/null 2>&1; then
+    if systemd-detect-virt --quiet; then
+      return 0
+    else
+      return 1
+    fi
+  fi
+
+  # Fallback heuristics for non systemd systems
+
+  # Check CPU flags for hypervisor
+  if grep -qi 'hypervisor' /proc/cpuinfo 2>/dev/null; then
+    return 0
+  fi
+
+  # Check DMI product name for common virtualization vendors
+  if [ -r /sys/class/dmi/id/product_name ]; then
+    if grep -qiE 'Virtual|KVM|VMware|Hyper-V|QEMU|Bochs' /sys/class/dmi/id/product_name 2>/dev/null; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
 
 # Collect storage related health (ZFS, btrfs, SMART)
 collect_storage_health() {
@@ -151,11 +184,18 @@ collect_storage_health() {
 
   # ZFS status if zpool is available
   if command -v zpool >/dev/null 2>&1; then
-    echo "ZFS zpool status:"
-    zpool status || echo "zpool status failed"
+    # Check if any pools are configured
+    if zpool list -H 2>/dev/null | grep -q .; then
+      echo "ZFS pool health (zpool status -x):"
+      # -x gives a compact "only if unhealthy" style summary
+      zpool status -x 2>/dev/null || echo "zpool status -x failed"
+    else
+      echo "ZFS tools installed, but no ZFS pools configured (zpool list is empty)"
+    fi
   else
     echo "ZFS not detected"
   fi
+
 
   # btrfs filesystem usage for root, if the tooling exists
   if command -v btrfs >/dev/null 2>&1; then
@@ -164,23 +204,27 @@ collect_storage_health() {
     btrfs filesystem usage / 2>/dev/null || echo "btrfs usage failed or not btrfs"
   fi
 
-  # SMART health if smartctl is available
+  # SMART health if smartctl is available and this is not a virtual machine
   if command -v smartctl >/dev/null 2>&1; then
     echo
-    echo "SMART overall health:"
-    # Quick pass over common device naming patterns: sdX and nvmeXn1
-    for disk in /dev/sd? /dev/nvme?n1; do
-      [ -e "$disk" ] || continue
-      echo
-      echo "Device: $disk"
-      # Only overall health summary (-H), indent output for readability
-      smartctl -H "$disk" 2>/dev/null | sed 's/^/  /'
-    done
+    if is_virtualized; then
+      echo "SMART checks skipped: virtual machine detected (disks are virtual, check hypervisor instead)"
+    else
+      echo "SMART overall health (physical disks):"
+      # Quick pass over common device naming patterns: sdX and nvmeXn1
+      for disk in /dev/sd? /dev/nvme?n1; do
+        [ -e "$disk" ] || continue
+        echo
+        echo "Device: $disk"
+        # Only overall health summary (-H), indent output for readability
+        smartctl -H "$disk" 2>/dev/null | sed 's/^/  /'
+      done
+    fi
   else
     echo
     echo "SMART tools not installed (smartmontools missing)"
   fi
-}
+
 
 # Collect basic network and security posture
 collect_network_security() {
@@ -290,6 +334,70 @@ collect_logs() {
   fi
 }
 
+# Check GitHub for a newer collector version and self update if needed.
+# Comparison is based on line 2 of this script and the remote script.
+self_update_if_needed() {
+  # If no URL is set, nothing to do
+  if [ -z "${COLLECTOR_URL:-}" ]; then
+    return 0
+  fi
+
+  # Need curl or wget
+  local fetch_cmd
+  if command -v curl >/dev/null 2>&1; then
+    fetch_cmd="curl -fsSL"
+  elif command -v wget >/dev/null 2>&1; then
+    fetch_cmd="wget -qO-"
+  else
+    echo "[collector] No curl or wget available; skipping self update check."
+    return 0
+  fi
+
+  # Fetch remote script to temp
+  local tmp_remote
+  tmp_remote="$(mktemp "/tmp/${HOSTNAME}-collector-remote.XXXXXX")" || return 0
+
+  if ! eval "$fetch_cmd \"$COLLECTOR_URL\"" >"$tmp_remote" 2>/dev/null; then
+    echo "[collector] Failed to fetch remote collector; skipping self update."
+    rm -f "$tmp_remote"
+    return 0
+  fi
+
+  # Extract version from line 2 (numbers and dots)
+  local local_ver remote_ver
+  local_ver="$(sed -n '2p' "$SCRIPT_PATH" 2>/dev/null | sed -E 's/[^0-9.]*([0-9.]+).*/\1/')"
+  remote_ver="$(sed -n '2p' "$tmp_remote" 2>/dev/null | sed -E 's/[^0-9.]*([0-9.]+).*/\1/')"
+
+  if [ -z "$local_ver" ] || [ -z "$remote_ver" ]; then
+    # Nothing sane to compare
+    rm -f "$tmp_remote"
+    return 0
+  fi
+
+  if [ "$local_ver" = "$remote_ver" ]; then
+    # Already up to date
+    rm -f "$tmp_remote"
+    return 0
+  fi
+
+  # Check if remote_ver > local_ver using version sort
+  if printf '%s\n%s\n' "$local_ver" "$remote_ver" | sort -V | tail -n1 | grep -qx "$remote_ver"; then
+    echo "[collector] New collector version detected (local $local_ver, remote $remote_ver). Updating..."
+    # Best effort backup
+    cp "$SCRIPT_PATH" "${SCRIPT_PATH}.bak" 2>/dev/null || true
+    if cat "$tmp_remote" >"$SCRIPT_PATH"; then
+      chmod +x "$SCRIPT_PATH" 2>/dev/null || true
+      rm -f "$tmp_remote"
+      echo "[collector] Collector updated, reexecuting new version..."
+      exec "$SCRIPT_PATH" "$@"
+    else
+      echo "[collector] WARNING: failed to replace collector script; keeping existing version."
+    fi
+  else
+    # Remote is not newer
+    rm -f "$tmp_remote"
+  fi
+}
 # ===== SSH KEY POC BOOTSTRAP =====
 
 # Ensure a local SSH key exists and is registered on the auditor for key-based auth
@@ -400,6 +508,9 @@ add_cronjob() {
 
 # ===== MAIN =====
 
+# Self update check (best effort, will reexec if a newer version exists)
+self_update_if_needed "$@"
+
 # Flag to control whether we auto-add a cron job for this script
 NO_CRON=0
 # Simple manual argument parsing: if any arg is --no-cron, disable cron setup
@@ -416,7 +527,7 @@ done
   collect_recent_changes
   collector_integrity
   collect_logs
-  collect_docker_info
+  
 } > "$TMPFILE"
 
 # Ensure key exists and is registered (POC) before upload
