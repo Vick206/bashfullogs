@@ -507,6 +507,9 @@ add_cronjob() {
 
 # ===== MAIN =====
 
+# Self update check (best effort, will reexec if a newer version exists)
+self_update_if_needed "$@"
+
 # Flag to control whether we auto-add a cron job for this script
 NO_CRON=0
 # Simple manual argument parsing: if any arg is --no-cron, disable cron setup
